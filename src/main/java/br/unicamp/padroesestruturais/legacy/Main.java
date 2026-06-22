@@ -1,5 +1,12 @@
 package br.unicamp.padroesestruturais.legacy;
 
+import br.unicamp.padroesestruturais.legacy.ajuste.AjusteValor;
+import br.unicamp.padroesestruturais.legacy.ajuste.DescontoFidelidadeDecorator;
+import br.unicamp.padroesestruturais.legacy.ajuste.JurosParcelamentoDecorator;
+import br.unicamp.padroesestruturais.legacy.ajuste.SeguroTransacaoDecorator;
+import br.unicamp.padroesestruturais.legacy.ajuste.TaxaAntecipacaoRecebiveisDecorator;
+import br.unicamp.padroesestruturais.legacy.ajuste.TaxaEmissaoNotaFiscalDecorator;
+import br.unicamp.padroesestruturais.legacy.ajuste.TaxaOperacaoInternacionalDecorator;
 import br.unicamp.padroesestruturais.legacy.domain.FormaPagamento;
 import br.unicamp.padroesestruturais.legacy.domain.Pedido;
 import br.unicamp.padroesestruturais.legacy.domain.ResultadoCobranca;
@@ -57,13 +64,9 @@ public class Main {
         FormaPagamento forma = selecionarFormaPagamento(scanner);
         if (forma == null) return;
 
-        boolean descontoFidelidade = perguntarSimNao(scanner, "Aplicar desconto de fidelidade (5%)?");
-        boolean jurosParcelamento = perguntarSimNao(scanner, "Aplicar juros de parcelamento (2,99%)?");
-        boolean taxaInternacional = perguntarSimNao(scanner, "Aplicar taxa de operacao internacional (5%)?");
-        boolean seguro = perguntarSimNao(scanner, "Aplicar seguro de transacao (R$ 4,90)?");
+        List<AjusteValor> ajustes = selecionarAjustesValor(scanner);
 
-        ResultadoCobranca resultado = service.cobrar(pedido, forma,
-                descontoFidelidade, jurosParcelamento, taxaInternacional, seguro);
+        ResultadoCobranca resultado = service.cobrar(pedido, forma, ajustes);
 
         System.out.println();
         exibirResultado(pedido, resultado);
@@ -73,13 +76,9 @@ public class Main {
         FormaPagamento forma = selecionarFormaPagamento(scanner);
         if (forma == null) return;
 
-        boolean descontoFidelidade = perguntarSimNao(scanner, "Aplicar desconto de fidelidade (5%)?");
-        boolean jurosParcelamento = perguntarSimNao(scanner, "Aplicar juros de parcelamento (2,99%)?");
-        boolean taxaInternacional = perguntarSimNao(scanner, "Aplicar taxa de operacao internacional (5%)?");
-        boolean seguro = perguntarSimNao(scanner, "Aplicar seguro de transacao (R$ 4,90)?");
+        List<AjusteValor> ajustes = selecionarAjustesValor(scanner);
 
-        List<ResultadoCobranca> resultados = service.cobrarEmLote(pedidos, forma,
-                descontoFidelidade, jurosParcelamento, taxaInternacional, seguro);
+        List<ResultadoCobranca> resultados = service.cobrarEmLote(pedidos, forma, ajustes);
 
         System.out.println();
         for (int i = 0; i < pedidos.size(); i++) {
@@ -127,17 +126,49 @@ public class Main {
         System.out.println("  1. Boleto");
         System.out.println("  2. Pix");
         System.out.println("  3. Cartao de Credito");
+        System.out.println("  4. Carteira Digital");
         System.out.print("Escolha: ");
 
         return switch (lerInteiro(scanner)) {
             case 1 -> FormaPagamento.BOLETO;
             case 2 -> FormaPagamento.PIX;
             case 3 -> FormaPagamento.CARTAO_CREDITO;
+            case 4 -> FormaPagamento.CARTEIRA_DIGITAL;
             default -> {
                 System.out.println("Forma de pagamento invalida.");
                 yield null;
             }
         };
+    }
+
+    private static List<AjusteValor> selecionarAjustesValor(Scanner scanner) {
+        List<AjusteValor> ajustes = new ArrayList<>();
+
+        if (perguntarSimNao(scanner, "Aplicar desconto de fidelidade (5%)?")) {
+            ajustes.add(DescontoFidelidadeDecorator::new);
+        }
+
+        if (perguntarSimNao(scanner, "Aplicar juros de parcelamento (2,99%)?")) {
+            ajustes.add(JurosParcelamentoDecorator::new);
+        }
+
+        if (perguntarSimNao(scanner, "Aplicar taxa de operacao internacional (5%)?")) {
+            ajustes.add(TaxaOperacaoInternacionalDecorator::new);
+        }
+
+        if (perguntarSimNao(scanner, "Aplicar seguro de transacao (R$ 4,90)?")) {
+            ajustes.add(SeguroTransacaoDecorator::new);
+        }
+
+        if (perguntarSimNao(scanner, "Aplicar taxa de antecipacao de recebiveis (1,5%)?")) {
+            ajustes.add(TaxaAntecipacaoRecebiveisDecorator::new);
+        }
+
+        if (perguntarSimNao(scanner, "Aplicar taxa de emissao de nota fiscal (R$ 2,50)?")) {
+            ajustes.add(TaxaEmissaoNotaFiscalDecorator::new);
+        }
+
+        return ajustes;
     }
 
     private static boolean perguntarSimNao(Scanner scanner, String pergunta) {
