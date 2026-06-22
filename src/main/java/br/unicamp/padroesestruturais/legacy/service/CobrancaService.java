@@ -1,5 +1,12 @@
 package br.unicamp.padroesestruturais.legacy.service;
 
+import br.unicamp.padroesestruturais.legacy.ajuste.AjusteValor;
+import br.unicamp.padroesestruturais.legacy.ajuste.DescontoFidelidadeDecorator;
+import br.unicamp.padroesestruturais.legacy.ajuste.JurosParcelamentoDecorator;
+import br.unicamp.padroesestruturais.legacy.ajuste.SeguroTransacaoDecorator;
+import br.unicamp.padroesestruturais.legacy.ajuste.TaxaOperacaoInternacionalDecorator;
+import br.unicamp.padroesestruturais.legacy.ajuste.ValorBaseCobranca;
+import br.unicamp.padroesestruturais.legacy.ajuste.ValorCobranca;
 import br.unicamp.padroesestruturais.legacy.domain.FormaPagamento;
 import br.unicamp.padroesestruturais.legacy.domain.Pedido;
 import br.unicamp.padroesestruturais.legacy.domain.ResultadoCobranca;
@@ -10,11 +17,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CobrancaService {
-
-    private static final double TAXA_DESCONTO_FIDELIDADE = 0.05;
-    private static final double TAXA_JUROS_PARCELAMENTO = 0.0299;
-    private static final double TAXA_OPERACAO_INTERNACIONAL = 0.05;
-    private static final double VALOR_SEGURO = 4.90;
 
     private final GatewayCobrancaResolver gatewayResolver;
 
@@ -32,8 +34,12 @@ public class CobrancaService {
                                      boolean aplicarTaxaInternacional,
                                      boolean aplicarSeguro) {
 
-        double valorFinal = calcularValorFinal(pedido.getValorBase(), aplicarDescontoFidelidade,
-                aplicarJurosParcelamento, aplicarTaxaInternacional, aplicarSeguro);
+        return cobrar(pedido, forma, criarAjustesLegados(aplicarDescontoFidelidade,
+                aplicarJurosParcelamento, aplicarTaxaInternacional, aplicarSeguro));
+    }
+
+    public ResultadoCobranca cobrar(Pedido pedido, FormaPagamento forma, List<AjusteValor> ajustes) {
+        double valorFinal = calcularValorFinal(pedido.getValorBase(), ajustes);
 
         return cobrarComValorFinal(pedido, forma, valorFinal);
     }
@@ -54,35 +60,67 @@ public class CobrancaService {
         return resultados;
     }
 
+    public List<ResultadoCobranca> cobrarEmLote(List<Pedido> pedidos, FormaPagamento forma,
+                                                  List<AjusteValor> ajustes) {
+
+        List<ResultadoCobranca> resultados = new ArrayList<>();
+
+        for (Pedido pedido : pedidos) {
+            resultados.add(cobrar(pedido, forma, ajustes));
+        }
+
+        return resultados;
+    }
+
     public double calcularValorFinal(double valorBase,
                                       boolean aplicarDescontoFidelidade,
                                       boolean aplicarJurosParcelamento,
                                       boolean aplicarTaxaInternacional,
                                       boolean aplicarSeguro) {
 
-        double valor = valorBase;
+        return calcularValorFinal(valorBase, criarAjustesLegados(aplicarDescontoFidelidade,
+                aplicarJurosParcelamento, aplicarTaxaInternacional, aplicarSeguro));
+    }
 
-        if (aplicarDescontoFidelidade) {
-            valor = valor - (valor * TAXA_DESCONTO_FIDELIDADE);
+    public double calcularValorFinal(double valorBase, List<AjusteValor> ajustes) {
+        ValorCobranca valor = new ValorBaseCobranca(valorBase);
+
+        if (ajustes != null) {
+            for (AjusteValor ajuste : ajustes) {
+                valor = ajuste.aplicarEm(valor);
+            }
         }
 
-        if (aplicarJurosParcelamento) {
-            valor = valor + (valor * TAXA_JUROS_PARCELAMENTO);
-        }
-
-        if (aplicarTaxaInternacional) {
-            valor = valor + (valor * TAXA_OPERACAO_INTERNACIONAL);
-        }
-
-        if (aplicarSeguro) {
-            valor = valor + VALOR_SEGURO;
-        }
-
-        return valor;
+        return valor.calcular();
     }
 
     private ResultadoCobranca cobrarComValorFinal(Pedido pedido, FormaPagamento forma, double valorFinal) {
         GatewayCobranca gateway = gatewayResolver.resolver(forma);
         return gateway.cobrar(pedido, valorFinal, forma);
+    }
+
+    private List<AjusteValor> criarAjustesLegados(boolean aplicarDescontoFidelidade,
+                                                   boolean aplicarJurosParcelamento,
+                                                   boolean aplicarTaxaInternacional,
+                                                   boolean aplicarSeguro) {
+        List<AjusteValor> ajustes = new ArrayList<>();
+
+        if (aplicarDescontoFidelidade) {
+            ajustes.add(DescontoFidelidadeDecorator::new);
+        }
+
+        if (aplicarJurosParcelamento) {
+            ajustes.add(JurosParcelamentoDecorator::new);
+        }
+
+        if (aplicarTaxaInternacional) {
+            ajustes.add(TaxaOperacaoInternacionalDecorator::new);
+        }
+
+        if (aplicarSeguro) {
+            ajustes.add(SeguroTransacaoDecorator::new);
+        }
+
+        return ajustes;
     }
 }
