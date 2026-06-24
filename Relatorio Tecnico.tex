@@ -1,0 +1,255 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazilian]{babel}
+\usepackage{geometry}
+\usepackage{setspace}
+\usepackage{titlesec}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{tcolorbox}
+\usepackage{fancyhdr}
+\usepackage{booktabs}
+\usepackage{tikz}
+\usepackage{enumitem}
+\usepackage{parskip}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{caption}
+\usetikzlibrary{positioning}
+
+\geometry{left=2.5cm, right=2.5cm, top=2.5cm, bottom=2.5cm}
+\setstretch{1.10}
+\emergencystretch=2em
+
+% -- Cores ---------------------------------------------------------------
+\definecolor{azul}{HTML}{1A3A6B}
+\definecolor{azulclaro}{HTML}{D5E8F4}
+\definecolor{cinzaborda}{HTML}{CCCCCC}
+
+% -- Titulos -------------------------------------------------------------
+\titleformat{\section}
+  {\bfseries\large\color{azul}}{\thesection.}{0.5em}{}[\vspace{-2pt}\rule{\linewidth}{0.8pt}]
+\titleformat{\subsection}{\bfseries\normalsize}{\thesubsection.}{0.5em}{}
+\titlespacing{\section}{0pt}{12pt}{4pt}
+\titlespacing{\subsection}{0pt}{8pt}{2pt}
+
+% -- Caixas ---------------------------------------------------------------
+\tcbuselibrary{skins, breakable}
+\newtcolorbox{resultbox}{
+  enhanced, colback=azul!7!white, colframe=azul!60!white,
+  boxrule=0.6pt, arc=4pt, left=8pt, right=8pt, top=4pt, bottom=4pt,
+  breakable,
+}
+
+% -- Cabecalho/rodape ----------------------------------------------------
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0.4pt}
+\fancyfoot[L]{\small\color{gray} SI405 -- Adapter e Decorator}
+\fancyfoot[R]{\small\color{gray} 2026}
+\fancyfoot[C]{\small\color{gray}\thepage}
+
+\hypersetup{colorlinks=true, linkcolor=azul, urlcolor=azul}
+\captionsetup{font=small, labelfont=bf}
+\graphicspath{{si405_report_assets/}{./}}
+
+\begin{document}
+\thispagestyle{empty}
+
+% ========================================================================
+% CAPA
+% ========================================================================
+\begin{titlepage}
+  \centering
+
+  {\Large\bfseries Universidade Estadual de Campinas}\\
+  {\large Faculdade de Tecnologia -- FT}\\[1.5cm]
+
+  \IfFileExists{af-logo-ft-reduzido-pos.png}{
+    \includegraphics[width=0.25\textwidth]{af-logo-ft-reduzido-pos.png}\\[0.5cm]
+  }{
+    \begin{tikzpicture}
+      \draw[azul, line width=1.2pt, rounded corners=6pt] (0,0) rectangle (4.2,1.5);
+      \node[azul] at (2.1,0.75) {\Large\bfseries FT -- UNICAMP};
+    \end{tikzpicture}\\[0.5cm]
+  }
+
+  {\LARGE\bfseries\color{azul} Relatório Técnico}\\
+  {\Large SI405 -- Padrões Estruturais: Adapter e Decorator}\\[0.2cm]
+
+  \vspace{0.5cm}
+  \begin{tikzpicture}
+    \draw[azul, line width=1.8pt] (0,0) -- (0.96\textwidth,0);
+  \end{tikzpicture}
+  \vspace{0.5cm}
+
+  {\large Tema: Sistema de Cobrança Corporativa}\\[0.2cm]
+  {\large Produto: refatoração arquitetural em Java}\\[0.2cm]
+
+  \vfill
+
+  \begin{flushright}
+    \textbf{Discentes:}\\[0.3em]
+    Daniel Aniceto Rosell -- RA 283988\\[0.6em]
+    Davie Schimidt Fonseca -- RA 259908\\[0.6em]
+    Hugo Strassa -- RA 246710\\[0.6em]
+    Gabriel Sorensen M. Traina -- RA 283997\\[0.6em]
+    Kaue Samuel Oliveira da Silva -- RA 178449\\[0.6em]
+    Kauã Henrique da Silva Andrade -- RA 246165\\[0.8em]
+  \end{flushright}
+
+  \vspace{1cm}
+  \textbf{Limeira -- SP}\\
+  {\large 2026}
+\end{titlepage}
+
+\setcounter{page}{1}
+
+% ========================================================================
+
+\section{Introdução}
+
+Este relatório apresenta a solução desenvolvida para a atividade prática de SI405 sobre padrões estruturais, com foco nos padrões \textit{Adapter} e \textit{Decorator}. O sistema-base representa uma aplicação corporativa de cobrança de pedidos, originalmente capaz de processar pagamentos por boleto, Pix e cartão de crédito, além de aplicar ajustes de valor como desconto, juros, taxa internacional e seguro.
+
+A implementação inicial estava funcional, porém apresentava problemas arquiteturais importantes. A integração com gateways de pagamento era feita diretamente no serviço principal, inclusive com código específico para bibliotecas externas. Além disso, os ajustes de valor eram controlados por parâmetros booleanos, o que dificultava a evolução da aplicação quando novas taxas precisassem ser adicionadas.
+
+\begin{resultbox}
+\textbf{Repositório GitHub da solução:} \url{https://github.com/SorensenG/si405-padroes-estruturais-grupo}
+\end{resultbox}
+
+O desenvolvimento foi organizado entre 18/06/2026 às 14:00 e 25/06/2026. A solução preservou o projeto original, manteve os testes existentes funcionando e adicionou suporte à forma de pagamento Carteira Digital e aos novos ajustes exigidos no enunciado.
+
+\section{Análise dos principais problemas arquiteturais}
+
+O primeiro problema identificado foi o acoplamento do serviço de cobrança às implementações concretas dos gateways. A classe \textit{CobrancaService} conhecia diretamente o gateway interno, o SDK externo \textit{PaySecureGateway}, o formato dos dados exigidos por esse SDK e o tratamento de exceções específico da integração. Dessa forma, uma classe de regra de aplicação passou a depender de detalhes de infraestrutura.
+
+Outro problema estava na duplicação da lógica de seleção e conversão de gateways. Os métodos \textit{cobrar} e \textit{cobrarEmLote} repetiam a mesma estrutura condicional para boleto, Pix e cartão de crédito. Assim, qualquer nova forma de pagamento exigiria alterações em mais de um ponto, aumentando o risco de inconsistência.
+
+No cálculo de valor final, a aplicação usava parâmetros booleanos para indicar quais ajustes deveriam ser aplicados. Essa solução funcionava para poucos casos, mas não era extensível. Cada novo ajuste exigiria alterar a assinatura de métodos, adicionar novos condicionais e espalhar a regra pelo serviço.
+
+\begin{resultbox}
+\textbf{Problema central:} o sistema funcionava, mas misturava seleção de gateway, adaptação de SDK externo, cálculo de valor e composição de ajustes dentro do mesmo fluxo de serviço.
+\end{resultbox}
+
+\section{Justificativa das decisões arquiteturais adotadas}
+
+A solução adotada foi uma refatoração localizada, mantendo o código-base fornecido e evitando substituir o sistema por uma implementação nova. A prioridade foi preservar o comportamento existente, reduzir acoplamento e criar pontos claros de extensão.
+
+Para os meios de pagamento, foi utilizado o padrão \textit{Adapter}. O serviço de cobrança passou a depender de uma interface comum de gateway, enquanto cada integração concreta ficou encapsulada em uma classe adaptadora. Essa decisão atende diretamente à restrição de não modificar classes do pacote externo, como \textit{PaySecureGateway} e \textit{WalletPaySDK}.
+
+Para os ajustes de valor, foi utilizado o padrão \textit{Decorator}. Cada ajuste passou a ser representado por um objeto independente, capaz de envolver o valor calculado anteriormente e acrescentar sua regra. Com isso, a aplicação pode combinar ajustes em qualquer quantidade e ordem sem aumentar a assinatura principal de cobrança.
+
+\section{Aplicação do padrão Adapter}
+
+O padrão \textit{Adapter} foi aplicado por meio da interface \textit{GatewayCobranca}. Essa interface define uma operação comum de cobrança, recebendo o pedido, o valor final e a forma de pagamento. O \textit{CobrancaService} deixa de conhecer diretamente os SDKs e passa a depender apenas dessa abstração.
+
+Foram criados três adaptadores principais. O \textit{GatewayPagamentoInternoAdapter} adapta o gateway interno usado por boleto e Pix. O \textit{PaySecureGatewayAdapter} adapta o SDK externo de cartão de crédito. O \textit{WalletPayGatewayAdapter} integra o novo SDK de Carteira Digital solicitado no enunciado.
+
+No caso do \textit{PaySecureGateway}, o adapter centraliza a criação do mapa de dados esperado pelo SDK, incluindo identificador do pedido, nome do cliente, valor e moeda. Também converte o código de status externo para os status internos \textit{APROVADA} e \textit{RECUSADA}, além de tratar a exceção de indisponibilidade do gateway.
+
+No caso do \textit{WalletPaySDK}, o adapter converte o valor de reais para centavos, cria a requisição exigida pelo SDK e traduz os status externos. O status \textit{CONFIRMED} é tratado como aprovado; os status \textit{DECLINED} e \textit{FAILED} são tratados como recusados.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{p{0.30\textwidth}p{0.52\textwidth}}
+\toprule
+\textbf{Componente} & \textbf{Responsabilidade} \\
+\midrule
+\textit{GatewayCobranca} & Interface comum usada pelo serviço de cobrança. \\
+\textit{GatewayPagamento}\newline\textit{InternoAdapter} & Adapta boleto e Pix para a interface comum. \\
+\textit{PaySecureGatewayAdapter} & Isola a integração com o SDK externo de cartão. \\
+\textit{WalletPayGatewayAdapter} & Integra a nova forma de pagamento Carteira Digital. \\
+\textit{GatewayCobrancaResolver} & Centraliza a escolha do adapter adequado para cada forma de pagamento. \\
+\bottomrule
+\end{tabular}
+\caption{Organização da solução baseada em Adapter.}
+\end{table}
+
+\section{Aplicação do padrão Decorator}
+
+O padrão \textit{Decorator} foi aplicado no cálculo do valor final da cobrança. O componente base é representado por \textit{ValorCobranca}, e a classe \textit{ValorBaseCobranca} encapsula o valor inicial do pedido. A classe abstrata \textit{AjusteValorDecorator} serve como base para os decorators concretos.
+
+Os ajustes já existentes foram preservados nas classes \textit{DescontoFidelidadeDecorator}, \textit{JurosParcelamentoDecorator}, \textit{TaxaOperacaoInternacionalDecorator} e \textit{SeguroTransacaoDecorator}. As regras originais foram mantidas: desconto de 5\%, juros de 2,99\%, taxa internacional de 5\% e seguro fixo de R\$ 4,90.
+
+Também foram adicionados os novos ajustes solicitados: \textit{TaxaAntecipacaoRecebiveisDecorator}, com taxa de 1,5\%, e \textit{TaxaEmissaoNotaFiscalDecorator}, com valor fixo de R\$ 2,50. O serviço passou a aceitar uma lista de ajustes, permitindo montar a cadeia de decorators dinamicamente.
+
+\begin{resultbox}
+\textbf{Compatibilidade:} os métodos antigos com parâmetros booleanos foram mantidos como camada de compatibilidade, mas internamente delegam para a nova composição orientada a objetos.
+\end{resultbox}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{p{0.38\textwidth}p{0.44\textwidth}}
+\toprule
+\textbf{Decorator} & \textbf{Regra aplicada} \\
+\midrule
+Desconto de fidelidade & Reduz 5\% do valor. \\
+Juros de parcelamento & Acrescenta 2,99\% ao valor. \\
+Taxa internacional & Acrescenta 5\% ao valor. \\
+Seguro de transação & Acrescenta R\$ 4,90. \\
+Antecipação de recebíveis & Acrescenta 1,5\% ao valor. \\
+Emissão de nota fiscal & Acrescenta R\$ 2,50. \\
+\bottomrule
+\end{tabular}
+\caption{Ajustes representados como decorators.}
+\end{table}
+
+\section{Impactos da refatoração}
+
+A refatoração reduziu o acoplamento entre o serviço de cobrança e os gateways concretos. Para adicionar uma nova forma de pagamento, basta criar um novo adapter e registrá-lo no resolvedor. O serviço principal permanece estável e não precisa conhecer os detalhes de cada SDK.
+
+A duplicação entre cobrança individual e cobrança em lote também foi reduzida. Os dois fluxos reutilizam a mesma lógica de cálculo e a mesma resolução de gateway, evitando que mudanças futuras precisem ser repetidas manualmente em mais de um método.
+
+Com o uso de \textit{Decorator}, os ajustes de valor ficaram independentes, combináveis e testáveis isoladamente. A criação de novas taxas não exige novos parâmetros booleanos nem condicionais no cálculo central. Essa organização favorece manutenção e extensibilidade, além de demonstrar o princípio estudado em aula: preferir composição sobre estruturas rígidas de decisão.
+
+\section{Testes executados}
+
+Os testes existentes foram mantidos e novos cenários foram adicionados para cobrir os requisitos do enunciado. Foram criados testes para o adapter do \textit{PaySecureGateway}, para o adapter do \textit{WalletPaySDK}, para os novos decorators e para combinações de múltiplos decorators em ordens diferentes.
+
+\begin{resultbox}
+\textbf{Resultado da validação:} a execução de \texttt{mvn test} finalizou com 34 testes executados, 0 falhas e 0 erros. Também foi executado \texttt{mvn clean package -q} com sucesso.
+\end{resultbox}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{p{0.30\textwidth}p{0.52\textwidth}}
+\toprule
+\textbf{Categoria de teste} & \textbf{Cenários validados} \\
+\midrule
+Testes existentes & Pedido, gateway interno, PaySecure, WalletPay e serviço de cobrança. \\
+Adapters & Aprovação e recusa em cartão e Carteira Digital. \\
+Decorators novos & Antecipação de recebíveis e emissão de nota fiscal. \\
+Composição & Combinação de múltiplos decorators em ordens distintas. \\
+\bottomrule
+\end{tabular}
+\caption{Resumo dos testes automatizados.}
+\end{table}
+
+\section{Divisão de responsabilidades}
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{p{0.54\textwidth}p{0.28\textwidth}}
+\toprule
+\textbf{Parte} & \textbf{Responsáveis} \\
+\midrule
+Estrutura base de adapters e gateway interno & Daniel, Gabriel \\
+Adapter do PaySecureGateway & Davie, Gabriel \\
+Integração do WalletPaySDK e Carteira Digital & Hugo, Gabriel \\
+Refatoração do CobrancaService e resolvedor de gateways & Daniel, Davie, Hugo, Gabriel \\
+Decorators dos ajustes existentes & Kaue, Gabriel \\
+Decorators novos, testes e revisão final & Kauã, Kaue, Gabriel e demais integrantes \\
+\bottomrule
+\end{tabular}
+\caption{Organização do trabalho do grupo.}
+\end{table}
+
+\end{document}
