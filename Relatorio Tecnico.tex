@@ -87,9 +87,6 @@
   \end{tikzpicture}
   \vspace{0.5cm}
 
-  {\large Tema: Sistema de Cobrança Corporativa}\\[0.2cm]
-  {\large Produto: refatoração arquitetural em Java}\\[0.2cm]
-
   \vfill
 
   \begin{flushright}
@@ -121,7 +118,7 @@ A implementação inicial estava funcional, porém apresentava problemas arquite
 \textbf{Repositório GitHub da solução:} \url{https://github.com/SorensenG/si405-padroes-estruturais-grupo}
 \end{resultbox}
 
-O desenvolvimento foi organizado entre 18/06/2026 às 14:00 e 25/06/2026. A solução preservou o projeto original, manteve os testes existentes funcionando e adicionou suporte à forma de pagamento Carteira Digital e aos novos ajustes exigidos no enunciado.
+A solução preservou o projeto original, manteve os testes existentes funcionando e adicionou suporte à forma de pagamento Carteira Digital e aos novos ajustes exigidos no enunciado.
 
 \section{Análise dos principais problemas arquiteturais}
 
@@ -230,26 +227,6 @@ Composição & Combinação de múltiplos decorators em ordens distintas. \\
 \bottomrule
 \end{tabular}
 \caption{Resumo dos testes automatizados.}
-\end{table}
-
-\section{Divisão de responsabilidades}
-
-\begin{table}[H]
-\centering
-\small
-\begin{tabular}{p{0.54\textwidth}p{0.28\textwidth}}
-\toprule
-\textbf{Parte} & \textbf{Responsáveis} \\
-\midrule
-Estrutura base de adapters e gateway interno & Daniel, Gabriel \\
-Adapter do PaySecureGateway & Davie, Gabriel \\
-Integração do WalletPaySDK e Carteira Digital & Hugo, Gabriel \\
-Refatoração do CobrancaService e resolvedor de gateways & Daniel, Davie, Hugo, Gabriel \\
-Decorators dos ajustes existentes & Kaue, Gabriel \\
-Decorators novos, testes e revisão final & Kauã, Kaue, Gabriel e demais integrantes \\
-\bottomrule
-\end{tabular}
-\caption{Organização do trabalho do grupo.}
 \end{table}
 
 \end{document}
